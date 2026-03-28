@@ -1,0 +1,32 @@
+type Booking = {
+  time: string;     // "10:30"
+  duration: number; // dk
+};
+
+export function findAvailableTime(
+  bookings: Booking[],
+  duration: number
+) {
+  const START = 9 * 60;
+  const END = 18 * 60;
+
+  const occupied = bookings.map((b) => {
+    const [h, m] = b.time.split(":").map(Number);
+    const start = h * 60 + m;
+    return { start, end: start + b.duration };
+  });
+
+  for (let t = START; t + duration <= END; t += 15) {
+    const conflict = occupied.some(
+      (o) => t < o.end && t + duration > o.start
+    );
+
+    if (!conflict) {
+      const hh = String(Math.floor(t / 60)).padStart(2, "0");
+      const mm = String(t % 60).padStart(2, "0");
+      return `${hh}:${mm}`;
+    }
+  }
+
+  return null;
+}

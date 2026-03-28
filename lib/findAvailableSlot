@@ -1,0 +1,43 @@
+import { Staff } from "./staff";
+
+type Booking = {
+  staffId: string;
+  time: string;
+  duration: number;
+};
+
+export function findAvailableSlotForStaff(
+  staff: Staff,
+  bookings: Booking[],
+  duration: number
+) {
+  const toMin = (t: string) => {
+    const [h, m] = t.split(":").map(Number);
+    return h * 60 + m;
+  };
+
+  const start = toMin(staff.workStart);
+  const end = toMin(staff.workEnd);
+
+  const staffBookings = bookings
+    .filter(b => b.staffId === staff.id)
+    .map(b => {
+      const s = toMin(b.time);
+      return { start: s, end: s + b.duration };
+    });
+
+  for (let t = start; t + duration <= end; t += 15) {
+    const conflict = staffBookings.some(
+      b => t < b.end && t + duration > b.start
+    );
+
+    if (!conflict) {
+      return {
+        staffId: staff.id,
+        time: `${String(Math.floor(t / 60)).padStart(2, "0")}:${String(t % 60).padStart(2, "0")}`,
+      };
+    }
+  }
+
+  return null;
+}
