@@ -1,43 +1,48 @@
-import { create } from "zustand";
+"use client"
 
-type Client = {
-  name: string;
-  phone: string;
-};
+import { useRouter } from "next/navigation"
+import { useState } from "react"
 
-type BookingState = {
-  client: Client | null;
-  staffId: string | null;
-  date: string | null;
-  time: string | null;
+export default function StartPage() {
+  const router = useRouter()
+  const [name, setName] = useState("")
+  const [phone, setPhone] = useState("")
 
-  setClient: (name: string, phone: string) => void;
-  setStaff: (staffId: string) => void;
-  setDate: (date: string) => void;
-  setTime: (time: string) => void;
-  reset: () => void;
-};
+  function handleNext() {
+    if (!name.trim() || !phone.trim()) {
+      alert("Lütfen tüm alanları doldur")
+      return
+    }
 
-export const useBookingStore = create<BookingState>((set) => ({
-  client: null,
-  staffId: null,
-  date: null,
-  time: null,
+    router.push("/booking/staff")
+  }
 
-  setClient: (name, phone) =>
-    set({
-      client: { name, phone },
-    }),
+  return (
+    <div className="min-h-screen flex flex-col items-center justify-center bg-[#0f172a] text-white p-6">
+      <h1 className="text-3xl font-bold mb-6">Welcome to Blore Barber</h1>
 
-  setStaff: (staffId) => set({ staffId }),
-  setDate: (date) => set({ date }),
-  setTime: (time) => set({ time }),
+      <input
+        type="text"
+        placeholder="Ad Soyad"
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+        className="w-full max-w-sm mb-4 rounded-xl p-3 text-black"
+      />
 
-  reset: () =>
-    set({
-      client: null,
-      staffId: null,
-      date: null,
-      time: null,
-    }),
-}));
+      <input
+        type="text"
+        placeholder="+90 5xx xxx xx xx"
+        value={phone}
+        onChange={(e) => setPhone(e.target.value)}
+        className="w-full max-w-sm mb-4 rounded-xl p-3 text-black"
+      />
+
+      <button
+        onClick={handleNext}
+        className="rounded-xl bg-blue-600 px-6 py-3 font-semibold"
+      >
+        Weiter
+      </button>
+    </div>
+  )
+}
