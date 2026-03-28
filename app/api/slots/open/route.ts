@@ -1,16 +1,18 @@
 import { NextResponse } from "next/server"
 import { db } from "@/lib/db"
+import { doc, deleteDoc } from "firebase/firestore"
 
 export async function POST(req: Request) {
-  const { staff, time } = await req.json()
+  try {
+    const { staff, time } = await req.json()
 
-  await db.run(
-    `
-    DELETE FROM closed_slots
-    WHERE staff=? AND time=?
-    `,
-    [staff, time]
-  )
+    const id = `${staff}_${time}`
 
-  return NextResponse.json({ ok: true })
+    await deleteDoc(doc(db, "closed_slots", id))
+
+    return NextResponse.json({ ok: true })
+  } catch (error) {
+    console.error(error)
+    return NextResponse.json({ ok: false })
+  }
 }
