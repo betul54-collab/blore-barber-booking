@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useBookingStore } from "@/lib/staff";
+import { useBookingStore } from "@/lib/bookingStore";
 import { useEffect } from "react";
 
 const SERVICES = [
