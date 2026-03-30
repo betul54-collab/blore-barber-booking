@@ -1,11 +1,15 @@
 import { create } from "zustand"
 
 type BookingState = {
-  selectedStaff: string | null
-  setStaff: (id: string) => void
+  staff: string | null
+  service: string | null
+  setStaff: (staff: string) => void
+  setService: (service: string) => void
 }
 
 export const useBookingStore = create<BookingState>((set) => ({
-  selectedStaff: null,
-  setStaff: (id) => set({ selectedStaff: id }),
+  staff: null,
+  service: null,
+  setStaff: (staff) => set({ staff }),
+  setService: (service) => set({ service }),
 }))
