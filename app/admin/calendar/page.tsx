@@ -299,7 +299,13 @@ export default function CalendarPage() {
       return
     }
 
-    const resourceId = selectedSlot.resource?.id
+    const resourceId = selectedSlot.resource?.id as string | undefined
+
+    if (!resourceId) {
+      alert("Personel seçilemedi")
+      return
+    }
+
     const start = new Date(selectedSlot.start)
     const end = new Date(start.getTime() + selectedService.duration * 60000)
 
@@ -504,7 +510,11 @@ export default function CalendarPage() {
           selectAllow={(info) => {
             const start = new Date(info.start)
             const end = new Date(info.end)
-            return !hasConflict(info.resource?.id, start, end)
+ 
+            const resourceId = info.resource?.id
+            if (!resourceId) return true
+
+            return !hasConflict(resourceId, start, end)
           }}
           eventClick={(info) => {
             setSelectedEvent(info.event)
@@ -516,13 +526,14 @@ export default function CalendarPage() {
               return
             }
 
-            const bookingId = info.event.extendedProps?.bookingId
+            const bookingId = info.event.extendedProps?.bookingId as string | number | undefined
             const resourceId =
-              info.event.getResources?.()[0]?.id || info.event._def?.resourceIds?.[0]
+              (info.event.getResources?.()[0]?.id as string | undefined) ||
+              ((info.event as any)._def?.resourceIds?.[0] as string | undefined)
             const start = info.event.start
             const end = info.event.end
 
-            if (!start || !end) {
+            if (!start || !end || !resourceId || bookingId === undefined) {
               info.revert()
               return
             }
@@ -534,7 +545,12 @@ export default function CalendarPage() {
             }
 
             try {
-              await updateBookingInStorage(bookingId, new Date(start), new Date(end), resourceId)
+              await updateBookingInStorage(
+                bookingId,
+                new Date(start),
+                new Date(end),
+                resourceId
+              )
             } catch (error) {
               console.error(error)
               info.revert()
@@ -547,13 +563,14 @@ export default function CalendarPage() {
               return
             }
 
-            const bookingId = info.event.extendedProps?.bookingId
+            const bookingId = info.event.extendedProps?.bookingId as string | number | undefined
             const resourceId =
-              info.event.getResources?.()[0]?.id || info.event._def?.resourceIds?.[0]
+              (info.event.getResources?.()[0]?.id as string | undefined) ||
+              ((info.event as any)._def?.resourceIds?.[0] as string | undefined)
             const start = info.event.start
             const end = info.event.end
 
-            if (!start || !end) {
+            if (!start || !end || !resourceId || bookingId === undefined) {
               info.revert()
               return
             }
@@ -565,7 +582,12 @@ export default function CalendarPage() {
             }
 
             try {
-              await updateBookingInStorage(bookingId, new Date(start), new Date(end), resourceId)
+              await updateBookingInStorage(
+                bookingId,
+                new Date(start),
+                new Date(end),
+                resourceId
+              )
             } catch (error) {
               console.error(error)
               info.revert()
@@ -756,7 +778,9 @@ export default function CalendarPage() {
 
               {selectedEvent.extendedProps?.sourceType === "booking" && (
                 <button
-                  onClick={() => deleteBooking(selectedEvent.extendedProps.bookingId)}
+                  onClick={() =>
+                    deleteBooking(selectedEvent.extendedProps.bookingId as string | number)
+                  }
                   style={dangerBtn}
                 >
                   Randevuyu Sil
