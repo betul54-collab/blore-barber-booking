@@ -1,8 +1,8 @@
 "use client"
 
 import { useRouter } from "next/navigation"
-import { useBookingStore } from "@/lib/bookingStore"
 import { useEffect } from "react"
+import { useBookingStore } from "@/lib/bookingStore"
 
 const SERVICES = [
   { id: "s1", name: "Saç Kesimi" },
