@@ -1,5 +1,4 @@
 "use client"
-import { addBookingToDb } from "@/lib/bookings"
 import { useRouter } from "next/navigation"
 import { useState } from "react"
 

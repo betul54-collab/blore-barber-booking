@@ -18,29 +18,19 @@ type BookingData = {
 export default function SuccessPage() {
   const router = useRouter()
   const [booking, setBooking] = useState<BookingData | null>(null)
-  const [countdown, setCountdown] = useState(5)
 
   useEffect(() => {
     const saved = localStorage.getItem("bookingData")
 
     if (saved) {
-      setBooking(JSON.parse(saved))
+      try {
+        setBooking(JSON.parse(saved))
+      } catch (error) {
+        console.error(error)
+      }
+      localStorage.removeItem("bookingData")
     }
-
-    const timer = setInterval(() => {
-      setCountdown((prev) => {
-        if (prev <= 1) {
-          clearInterval(timer)
-          localStorage.removeItem("bookingData")
-          router.push("/")
-          return 0
-        }
-        return prev - 1
-      })
-    }, 1000)
-
-    return () => clearInterval(timer)
-  }, [router])
+  }, [])
 
   if (!booking) {
     return (
@@ -49,13 +39,30 @@ export default function SuccessPage() {
           minHeight: "100vh",
           background: "linear-gradient(135deg,#0f172a,#1e3a8a)",
           display: "flex",
+          flexDirection: "column",
+          gap: 16,
           alignItems: "center",
           justifyContent: "center",
           color: "white",
           padding: 20,
         }}
       >
-        Randevu bilgisi bulunamadı
+        <div>Randevu bilgisi bulunamadı</div>
+
+        <button
+          onClick={() => router.push("/")}
+          style={{
+            padding: "12px 24px",
+            borderRadius: 14,
+            border: "none",
+            background: "#2563eb",
+            color: "white",
+            fontWeight: 700,
+            cursor: "pointer",
+          }}
+        >
+          Ana Sayfaya Dön
+        </button>
       </div>
     )
   }
@@ -159,22 +166,8 @@ export default function SuccessPage() {
           <Row label="Saat" value={booking.time} />
         </div>
 
-        <div
-          style={{
-            marginBottom: 18,
-            color: "#64748b",
-            fontSize: 14,
-            fontWeight: 600,
-          }}
-        >
-          {countdown} saniye sonra ana sayfaya dönülecek
-        </div>
-
         <button
-          onClick={() => {
-            localStorage.removeItem("bookingData")
-            router.push("/")
-          }}
+          onClick={() => router.push("/")}
           style={{
             width: "100%",
             padding: 14,

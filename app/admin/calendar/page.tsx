@@ -1,21 +1,13 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import FullCalendar from "@fullcalendar/react"
 import timeGridPlugin from "@fullcalendar/timegrid"
 import resourceTimeGridPlugin from "@fullcalendar/resource-timegrid"
 import interactionPlugin from "@fullcalendar/interaction"
 import dayGridPlugin from "@fullcalendar/daygrid"
 import trLocale from "@fullcalendar/core/locales/tr"
-import {
-  collection,
-  onSnapshot,
-  addDoc,
-  updateDoc,
-  deleteDoc,
-  doc,
-} from "firebase/firestore"
-import { db } from "@/lib/firebase"
+import { auth } from "@/lib/firebase"
 
 type Service = {
   name: string
@@ -47,12 +39,40 @@ type HolidayItem = {
   end: string
 }
 
+function ymd(d: Date) {
+  const m = String(d.getMonth() + 1).padStart(2, "0")
+  const day = String(d.getDate()).padStart(2, "0")
+  return `${d.getFullYear()}-${m}-${day}`
+}
+
+function hm(d: Date) {
+  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`
+}
+
+async function authFetch(url: string, options: RequestInit = {}) {
+  await auth.authStateReady()
+  const token = await auth.currentUser?.getIdToken()
+  if (!token) throw new Error("Giriş yapılmamış")
+
+  return fetch(url, {
+    ...options,
+    cache: "no-store",
+    headers: {
+      ...(options.headers || {}),
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+  })
+}
+
 export default function CalendarPage() {
   const calendarRef = useRef<any>(null)
 
-  const [resources, setResources] = useState<any[]>([])
-  const [events, setEvents] = useState<any[]>([])
+  const [staffList, setStaffList] = useState<string[]>([])
   const [services, setServices] = useState<Service[]>([])
+  const [breaks, setBreaks] = useState<BreakItem[]>([])
+  const [holidays, setHolidays] = useState<HolidayItem[]>([])
+  const [bookings, setBookings] = useState<Booking[]>([])
 
   const [createOpen, setCreateOpen] = useState(false)
   const [detailOpen, setDetailOpen] = useState(false)
@@ -65,36 +85,50 @@ export default function CalendarPage() {
   const [phone, setPhone] = useState("+905")
   const [service, setService] = useState("")
   const [note, setNote] = useState("")
+  const [pickedStaff, setPickedStaff] = useState("")
   const [view, setView] = useState("resourceTimeGridDay")
   const [currentDate, setCurrentDate] = useState(new Date())
 
-  const [firebaseBookings, setFirebaseBookings] = useState<Booking[]>([])
-  const [firebaseLoaded, setFirebaseLoaded] = useState(false)
+  const loadConfig = useCallback(async () => {
+    try {
+      const res = await fetch("/api/config", { cache: "no-store" })
+      if (!res.ok) return
+      const data = await res.json()
+      setStaffList(data.staff ?? [])
+      setServices(data.services ?? [])
+      setBreaks(data.breaks ?? [])
+      setHolidays(data.holidays ?? [])
+    } catch (error) {
+      console.error(error)
+    }
+  }, [])
 
-  function getStaff(): string[] {
-    return JSON.parse(localStorage.getItem("staff") || "[]")
-  }
+  const loadBookings = useCallback(async () => {
+    try {
+      const res = await authFetch("/api/admin/bookings")
+      if (!res.ok) return
+      setBookings(await res.json())
+    } catch (error) {
+      console.error(error)
+    }
+  }, [])
 
-  function getServices(): Service[] {
-    return JSON.parse(localStorage.getItem("services") || "[]")
-  }
+  useEffect(() => {
+    loadConfig()
+    loadBookings()
 
-  function getBookings(): Booking[] {
-    return JSON.parse(localStorage.getItem("bookings") || "[]")
-  }
+    const timer = setInterval(() => {
+      loadConfig()
+      loadBookings()
+    }, 20000)
 
-  function getBreaks(): BreakItem[] {
-    return JSON.parse(localStorage.getItem("breaks") || "[]")
-  }
+    return () => clearInterval(timer)
+  }, [loadConfig, loadBookings])
 
-  function getHolidays(): HolidayItem[] {
-    return JSON.parse(localStorage.getItem("holidays") || "[]")
-  }
-
-  function getActiveBookings(): Booking[] {
-    if (firebaseLoaded) return firebaseBookings
-    return getBookings()
-  }
+  const resources = useMemo(
+    () => staffList.map((s, i) => ({ id: `staff${i}`, title: s })),
+    [staffList]
+  )
 
   function holidayRange(item: HolidayItem) {
     const start = new Date(`${item.start}T00:00`)
@@ -121,26 +155,7 @@ export default function CalendarPage() {
     setPhone("+" + digits)
   }
 
-  function loadStaff() {
-    const staff = getStaff()
-
-    const formatted = staff.map((s, i) => ({
-      id: `staff${i}`,
-      title: s,
-    }))
-
-    setResources(formatted)
-  }
-
-  function loadServices() {
-    setServices(getServices())
-  }
-
-  function loadEvents(currentBookings?: Booking[]) {
-    const bookings = currentBookings || getActiveBookings()
-    const breaks = getBreaks()
-    const holidays = getHolidays()
-
+  const events = useMemo(() => {
     const bookingEvents = bookings.map((b) => {
       const start = new Date(`${b.date}T${b.time}`)
       const end = new Date(start.getTime() + b.duration * 60000)
@@ -199,52 +214,8 @@ export default function CalendarPage() {
       }
     })
 
-    setEvents([...bookingEvents, ...breakEvents, ...holidayEvents])
-  }
-
-  useEffect(() => {
-    const unsubscribe = onSnapshot(collection(db, "bookings"), (snapshot) => {
-      const data: Booking[] = snapshot.docs.map((item) => {
-        const row = item.data() as any
-
-        return {
-          id: item.id,
-          name: row.name || "",
-          phone: row.phone || "",
-          service: row.service || "",
-          date: row.date || "",
-          time: row.time || "",
-          duration: Number(row.duration || 0),
-          staff: row.staffId || row.staff || "",
-          note: row.note || "",
-        }
-      })
-
-      setFirebaseBookings(data)
-      setFirebaseLoaded(true)
-      loadEvents(data)
-    })
-
-    return () => unsubscribe()
-  }, [])
-
-  useEffect(() => {
-    function syncAll() {
-      loadStaff()
-      loadServices()
-      loadEvents()
-    }
-
-    syncAll()
-
-    window.addEventListener("settingsUpdated", syncAll)
-    window.addEventListener("storage", syncAll)
-
-    return () => {
-      window.removeEventListener("settingsUpdated", syncAll)
-      window.removeEventListener("storage", syncAll)
-    }
-  }, [firebaseBookings, firebaseLoaded])
+    return [...bookingEvents, ...breakEvents, ...holidayEvents]
+  }, [bookings, breaks, holidays])
 
   function overlaps(startA: Date, endA: Date, startB: Date, endB: Date) {
     return startA < endB && endA > startB
@@ -256,10 +227,6 @@ export default function CalendarPage() {
     end: Date,
     ignoreBookingId?: string | number
   ) {
-    const bookings = getActiveBookings()
-    const breaks = getBreaks()
-    const holidays = getHolidays()
-
     const bookingConflict = bookings.some((b) => {
       if (b.staff !== resourceId) return false
       if (ignoreBookingId && String(b.id) === String(ignoreBookingId)) return false
@@ -299,7 +266,8 @@ export default function CalendarPage() {
       return
     }
 
-    const resourceId = selectedSlot.resource?.id as string | undefined
+    const resourceId =
+      (selectedSlot.resource?.id as string | undefined) || pickedStaff
 
     if (!resourceId) {
       alert("Personel seçilemedi")
@@ -314,28 +282,40 @@ export default function CalendarPage() {
       return
     }
 
-    const date = start.toISOString().split("T")[0]
-    const time = start.toTimeString().slice(0, 5)
+    try {
+      const res = await authFetch("/api/admin/bookings", {
+        method: "POST",
+        body: JSON.stringify({
+          name: name.trim(),
+          phone,
+          service,
+          note,
+          date: ymd(start),
+          time: hm(start),
+          duration: selectedService.duration,
+          staff: resourceId,
+        }),
+      })
 
-    await addDoc(collection(db, "bookings"), {
-      name,
-      phone,
-      service,
-      date,
-      time,
-      duration: selectedService.duration,
-      staff: resourceId,
-      staffId: resourceId,
-      note,
-      createdAt: new Date().toISOString(),
-    })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        alert(err.error || "Kaydedilemedi")
+        return
+      }
+    } catch (error) {
+      console.error(error)
+      alert("Kaydedilemedi")
+      return
+    }
 
     setName("")
     setPhone("+905")
     setService("")
     setNote("")
+    setPickedStaff("")
     setSelectedSlot(null)
     setCreateOpen(false)
+    await loadBookings()
   }
 
   async function updateBookingInStorage(
@@ -344,19 +324,41 @@ export default function CalendarPage() {
     newEnd: Date,
     resourceId: string
   ) {
-    await updateDoc(doc(db, "bookings", String(bookingId)), {
-      date: newStart.toISOString().split("T")[0],
-      time: newStart.toTimeString().slice(0, 5),
-      duration: Math.round((newEnd.getTime() - newStart.getTime()) / 60000),
-      staff: resourceId,
-      staffId: resourceId,
+    const res = await authFetch("/api/admin/bookings", {
+      method: "PATCH",
+      body: JSON.stringify({
+        id: String(bookingId),
+        date: ymd(newStart),
+        time: hm(newStart),
+        duration: Math.round((newEnd.getTime() - newStart.getTime()) / 60000),
+        staff: resourceId,
+      }),
     })
+
+    if (!res.ok) throw new Error("update")
+    await loadBookings()
   }
 
   async function deleteBooking(bookingId: number | string) {
-    await deleteDoc(doc(db, "bookings", String(bookingId)))
+    try {
+      const res = await authFetch("/api/admin/bookings", {
+        method: "DELETE",
+        body: JSON.stringify({ id: String(bookingId) }),
+      })
+
+      if (!res.ok) {
+        alert("Silinemedi")
+        return
+      }
+    } catch (error) {
+      console.error(error)
+      alert("Silinemedi")
+      return
+    }
+
     setDetailOpen(false)
     setSelectedEvent(null)
+    await loadBookings()
   }
 
   function changeView(nextView: string) {
@@ -505,12 +507,13 @@ export default function CalendarPage() {
           eventMaxStack={999}
           select={(info) => {
             setSelectedSlot(info)
+            setPickedStaff("")
             setCreateOpen(true)
           }}
           selectAllow={(info) => {
             const start = new Date(info.start)
             const end = new Date(info.end)
- 
+
             const resourceId = info.resource?.id
             if (!resourceId) return true
 
@@ -691,6 +694,21 @@ export default function CalendarPage() {
               onChange={(e) => handlePhone(e.target.value)}
               style={inputStyle}
             />
+
+            {!selectedSlot?.resource && (
+              <select
+                value={pickedStaff}
+                onChange={(e) => setPickedStaff(e.target.value)}
+                style={inputStyle}
+              >
+                <option value="">Personel seç</option>
+                {resources.map((r) => (
+                  <option key={r.id} value={r.id}>
+                    {r.title}
+                  </option>
+                ))}
+              </select>
+            )}
 
             <select value={service} onChange={(e) => setService(e.target.value)} style={inputStyle}>
               <option value="">Servis seç</option>

@@ -2,13 +2,9 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { collection, deleteDoc, doc, getDocs } from "firebase/firestore"
-import { db } from "@/lib/firebase"
 
 type Booking = {
   id: string
-  name: string
-  phone: string
   service: string
   date: string
   time: string
@@ -55,26 +51,20 @@ export default function CancelPage() {
       setLoading(true)
       setSearched(true)
 
-      const formatted = normalizePhone(phone)
-      const snapshot = await getDocs(collection(db, "bookings"))
+      const res = await fetch("/api/bookings/lookup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone: normalizePhone(phone) }),
+      })
 
-      const found: Booking[] = snapshot.docs
-        .map((item) => {
-          const data = item.data() as any
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        alert(data.error || "Randevular alınamadı ❌")
+        setResults([])
+        return
+      }
 
-          return {
-            id: item.id,
-            name: data.name || "",
-            phone: data.phone || "",
-            service: data.service || "",
-            date: data.date || "",
-            time: data.time || "",
-            duration: data.duration,
-            staff: data.staff,
-          }
-        })
-        .filter((b) => b.phone === formatted)
-
+      const found: Booking[] = await res.json()
       setResults(found)
 
       if (found.length === 0) {
@@ -94,18 +84,21 @@ export default function CancelPage() {
 
       const bookingToCancel = results.find((b) => b.id === id) || null
 
-      await deleteDoc(doc(db, "bookings", id))
+      const res = await fetch("/api/bookings/cancel", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, phone: normalizePhone(phone) }),
+      })
 
-      const updatedResults = results.filter((r) => r.id !== id)
-      setResults(updatedResults)
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        alert(data.error || "Randevu iptal edilemedi ❌")
+        return
+      }
 
+      setResults(results.filter((r) => r.id !== id))
       window.dispatchEvent(new Event("bookingsUpdated"))
-
       setCancelledBooking(bookingToCancel)
-
-      setTimeout(() => {
-        router.push("/")
-      }, 3000)
     } catch (error) {
       console.error(error)
       alert("Randevu iptal edilemedi ❌")
@@ -131,6 +124,7 @@ export default function CancelPage() {
           padding: "34px",
           borderRadius: "22px",
           width: "420px",
+          maxWidth: "100%",
           boxShadow: "0 20px 60px rgba(0,0,0,0.28)",
           position: "relative",
         }}
@@ -240,10 +234,6 @@ export default function CancelPage() {
             </div>
 
             <div style={{ color: "#334155", marginBottom: 4 }}>
-              <b>İsim:</b> {r.name}
-            </div>
-
-            <div style={{ color: "#334155", marginBottom: 4 }}>
               <b>Servis:</b> {r.service}
             </div>
 
@@ -300,6 +290,7 @@ export default function CancelPage() {
             justifyContent: "center",
             alignItems: "center",
             zIndex: 999,
+            padding: 20,
           }}
         >
           <div
@@ -308,25 +299,52 @@ export default function CancelPage() {
               padding: "30px",
               borderRadius: "18px",
               width: "340px",
+              maxWidth: "100%",
               textAlign: "center",
               boxShadow: "0 20px 60px rgba(0,0,0,0.3)",
             }}
           >
-            <h2 style={{ marginBottom: 10 }}>Randevu İptal Edildi ✅</h2>
-
-            <p style={{ marginBottom: 6 }}>
-              <b>{cancelledBooking.name}</b>
-            </p>
+            <h2 style={{ marginTop: 0, marginBottom: 10 }}>Randevu İptal Edildi ✅</h2>
 
             <p style={{ marginBottom: 6 }}>{cancelledBooking.service}</p>
 
-            <p style={{ marginBottom: 0 }}>
+            <p style={{ marginBottom: 20 }}>
               {formatDate(cancelledBooking.date)} - {cancelledBooking.time}
             </p>
 
-            <p style={{ marginTop: 16, fontSize: 12, opacity: 0.65 }}>
-              3 saniye sonra ana sayfaya dönülüyor...
-            </p>
+            <div style={{ display: "grid", gap: 10 }}>
+              <button
+                onClick={() => router.push("/")}
+                style={{
+                  width: "100%",
+                  padding: 12,
+                  borderRadius: 12,
+                  border: "none",
+                  background: "#2563eb",
+                  color: "white",
+                  fontWeight: 700,
+                  cursor: "pointer",
+                }}
+              >
+                Ana Sayfaya Dön
+              </button>
+
+              <button
+                onClick={() => setCancelledBooking(null)}
+                style={{
+                  width: "100%",
+                  padding: 12,
+                  borderRadius: 12,
+                  border: "none",
+                  background: "#e5e7eb",
+                  color: "#111827",
+                  fontWeight: 700,
+                  cursor: "pointer",
+                }}
+              >
+                Kapat
+              </button>
+            </div>
           </div>
         </div>
       )}

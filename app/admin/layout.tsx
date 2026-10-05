@@ -3,6 +3,8 @@
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
+import { onAuthStateChanged, signOut } from "firebase/auth"
+import { auth } from "@/lib/firebase"
 
 export default function AdminLayout({
   children,
@@ -12,27 +14,35 @@ export default function AdminLayout({
   const pathname = usePathname()
   const router = useRouter()
   const [ready, setReady] = useState(false)
+  const [userEmail, setUserEmail] = useState("")
 
   useEffect(() => {
     const isLoginPage = pathname === "/admin/login"
-    const auth = localStorage.getItem("adminAuth")
+    const adminUid = process.env.NEXT_PUBLIC_ADMIN_UID
 
-    if (isLoginPage) {
-      setReady(true)
-      return
-    }
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      const allowed = !!user && (!adminUid || user.uid === adminUid)
 
-    if (auth !== "true") {
-      router.replace("/admin/login")
-      return
-    }
+      if (allowed) {
+        setUserEmail(user!.email || "")
+        setReady(true)
+        return
+      }
 
-    setReady(true)
+      setUserEmail("")
+      if (isLoginPage) {
+        setReady(true)
+      } else {
+        setReady(false)
+        router.replace("/admin/login")
+      }
+    })
+
+    return () => unsubscribe()
   }, [pathname, router])
 
-  function logout() {
-    localStorage.removeItem("adminAuth")
-    localStorage.removeItem("adminUsername")
+  async function logout() {
+    await signOut(auth)
     router.replace("/admin/login")
   }
 
@@ -118,7 +128,7 @@ export default function AdminLayout({
               fontSize: 14,
             }}
           >
-            {localStorage.getItem("adminUsername") || "Admin"}
+            {userEmail || "Admin"}
           </div>
         </div>
 

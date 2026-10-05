@@ -2,20 +2,6 @@
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import { initializeApp } from "firebase/app"
-import { getFirestore, collection, addDoc } from "firebase/firestore"
-
-const firebaseConfig = {
-  apiKey: "AIzaSyBupAA2F6DQa18sY-vhVzcSHJDCDT4NOYE",
-  authDomain: "blore-barberbook.firebaseapp.com",
-  projectId: "blore-barberbook",
-  storageBucket: "blore-barberbook.firebasestorage.app",
-  messagingSenderId: "932664395544",
-  appId: "1:932664395544:web:469251d17f992b8726806d",
-}
-
-const app = initializeApp(firebaseConfig)
-const db = getFirestore(app)
 
 type BookingData = {
   name: string
@@ -49,18 +35,33 @@ export default function ConfirmPage() {
     try {
       setLoading(true)
 
-      await addDoc(collection(db, "bookings"), {
-        name: booking.name,
-        phone: booking.phone,
-        service: booking.service,
-        price: booking.price,
-        duration: booking.duration,
-        date: booking.date,
-        time: booking.time,
-        staff: booking.staff,
-        staffId: booking.staffId || "",
-        createdAt: new Date().toISOString(),
+      const res = await fetch("/api/bookings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: booking.name,
+          phone: booking.phone,
+          service: booking.service,
+          price: booking.price,
+          duration: booking.duration,
+          date: booking.date,
+          time: booking.time,
+          staff: booking.staff,
+          staffId: booking.staffId || "",
+        }),
       })
+
+      if (res.status === 409) {
+        alert("Bu saat az önce doldu, lütfen başka bir saat seçin")
+        router.back()
+        return
+      }
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        alert(err.error || "Randevu kaydedilemedi ❌")
+        return
+      }
 
       router.push("/booking/success")
     } catch (error) {

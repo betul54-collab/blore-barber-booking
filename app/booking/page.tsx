@@ -2,8 +2,6 @@
 
 import { useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
-import { collection, onSnapshot } from "firebase/firestore"
-import { db } from "@/lib/firebase"
 
 type Service = {
   name: string
@@ -12,10 +10,6 @@ type Service = {
 }
 
 type Booking = {
-  id: string
-  name: string
-  phone: string
-  service: string
   date: string
   time: string
   duration: number
@@ -50,6 +44,7 @@ export default function BookingPage() {
   const [breaks, setBreaks] = useState<BreakItem[]>([])
   const [holidays, setHolidays] = useState<HolidayItem[]>([])
   const [workHours, setWorkHours] = useState<WorkDay[]>([])
+  const [configLoaded, setConfigLoaded] = useState(false)
 
   const [name, setName] = useState("")
   const [phone, setPhone] = useState("+905")
@@ -62,61 +57,58 @@ export default function BookingPage() {
   const [loading, setLoading] = useState(false)
 
   useEffect(() => {
-    const savedServices = localStorage.getItem("services")
-    const savedStaff = localStorage.getItem("staff")
-    const savedBreaks = localStorage.getItem("breaks")
-    const savedHolidays = localStorage.getItem("holidays")
-    const savedWorkHours = localStorage.getItem("workHours")
+    async function loadConfig() {
+      try {
+        const res = await fetch("/api/config", { cache: "no-store" })
+        if (!res.ok) throw new Error("config")
+        const data = await res.json()
 
-    if (savedServices) {
-      setServices(JSON.parse(savedServices))
-    } else {
-      setServices([
-        { name: "Saç", price: 500, duration: 30 },
-        { name: "Sakal", price: 300, duration: 15 },
-        { name: "Saç + Sakal", price: 800, duration: 45 },
-      ])
+        setServices(data.services ?? [])
+        setStaff(data.staff ?? [])
+        setBreaks(data.breaks ?? [])
+        setHolidays(data.holidays ?? [])
+        setWorkHours(data.workHours ?? [])
+        setConfigLoaded(true)
+      } catch (error) {
+        console.error(error)
+        alert("Ayarlar yüklenemedi, sayfayı yenileyin")
+      }
     }
 
-    if (savedStaff) setStaff(JSON.parse(savedStaff))
-    if (savedBreaks) setBreaks(JSON.parse(savedBreaks))
-    if (savedHolidays) setHolidays(JSON.parse(savedHolidays))
-
-    if (savedWorkHours) {
-      setWorkHours(JSON.parse(savedWorkHours))
-    } else {
-      setWorkHours([
-        { day: "Pazartesi", start: "09:00", end: "18:00", closed: false },
-        { day: "Salı", start: "09:00", end: "18:00", closed: false },
-        { day: "Çarşamba", start: "09:00", end: "18:00", closed: false },
-        { day: "Perşembe", start: "09:00", end: "18:00", closed: false },
-        { day: "Cuma", start: "09:00", end: "18:00", closed: false },
-        { day: "Cumartesi", start: "09:00", end: "18:00", closed: false },
-        { day: "Pazar", start: "09:00", end: "18:00", closed: true },
-      ])
-    }
-
-    const unsubscribe = onSnapshot(collection(db, "bookings"), (snapshot) => {
-      const list: Booking[] = snapshot.docs.map((item) => {
-        const data = item.data() as any
-
-        return {
-          id: item.id,
-          name: data.name || "",
-          phone: data.phone || "",
-          service: data.service || "",
-          date: data.date || "",
-          time: data.time || "",
-          duration: Number(data.duration || 0),
-          staff: data.staffId || data.staff || "",
-        }
-      })
-
-      setBookings(list)
-    })
-
-    return () => unsubscribe()
+    loadConfig()
   }, [])
+
+  useEffect(() => {
+    if (!date) {
+      setBookings([])
+      return
+    }
+
+    let cancelled = false
+
+    async function loadTaken() {
+      try {
+        const res = await fetch(`/api/slots?date=${date}`, { cache: "no-store" })
+        if (!res.ok) return
+
+        const list: { time: string; duration: number; staff: string }[] = await res.json()
+
+        if (!cancelled) {
+          setBookings(list.map((b) => ({ ...b, date })))
+        }
+      } catch (error) {
+        console.error(error)
+      }
+    }
+
+    loadTaken()
+    const timer = setInterval(loadTaken, 20000)
+
+    return () => {
+      cancelled = true
+      clearInterval(timer)
+    }
+  }, [date])
 
   const selectedService = useMemo(
     () => services.find((s) => s.name === service),
@@ -258,6 +250,7 @@ export default function BookingPage() {
       setAvailableTimes([])
       setTime("")
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [date, selectedStaff, service, bookings, breaks, holidays, workHours])
 
   function handleContinue() {
@@ -283,6 +276,7 @@ export default function BookingPage() {
       staffId: selectedStaff,
     }
 
+    // Sadece onay sayfasına geçiş için geçici tutulur
     localStorage.setItem("bookingData", JSON.stringify(bookingData))
 
     setTimeout(() => {
@@ -376,6 +370,10 @@ export default function BookingPage() {
           ))}
         </select>
 
+        {configLoaded && staff.length === 0 && (
+          <div style={errorBox}>Şu an randevu için uygun personel yok</div>
+        )}
+
         <select
           value={service}
           onChange={(e) => setService(e.target.value)}
@@ -394,7 +392,14 @@ export default function BookingPage() {
           min={new Date().toISOString().split("T")[0]}
           value={date}
           onChange={(e) => setDate(e.target.value)}
-          style={inputStyle}
+          onClick={(e) => {
+            try {
+              e.currentTarget.showPicker()
+            } catch {
+              // eski tarayıcılarda sessizce geç
+            }
+          }}
+          style={{ ...inputStyle, cursor: "pointer" }}
         />
 
         {date && isSalonClosed(date) && (
@@ -479,6 +484,23 @@ export default function BookingPage() {
           }}
         >
           {loading ? "Devam ediliyor..." : "Devam Et"}
+        </button>
+
+        <button
+          onClick={() => router.push("/")}
+          style={{
+            width: "100%",
+            padding: 14,
+            marginTop: 10,
+            borderRadius: 14,
+            border: "none",
+            background: "#64748b",
+            color: "white",
+            fontWeight: 700,
+            cursor: "pointer",
+          }}
+        >
+          Ana Sayfaya Dön
         </button>
       </div>
     </div>

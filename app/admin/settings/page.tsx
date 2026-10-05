@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
+import { auth } from "@/lib/firebase"
 
 type Service = {
   name: string
@@ -28,25 +29,27 @@ type HolidayItem = {
   end: string
 }
 
+const defaultServices: Service[] = [
+  { name: "Saç", price: 500, duration: 30 },
+  { name: "Sakal", price: 300, duration: 15 },
+  { name: "Saç + Sakal", price: 800, duration: 45 },
+  { name: "Saç Açma Boyama", price: 1500, duration: 90 },
+]
+
+const days = [
+  "Pazartesi",
+  "Salı",
+  "Çarşamba",
+  "Perşembe",
+  "Cuma",
+  "Cumartesi",
+  "Pazar",
+]
+
 export default function SettingsPage() {
   const router = useRouter()
 
-  const defaultServices: Service[] = [
-    { name: "Saç", price: 500, duration: 30 },
-    { name: "Sakal", price: 300, duration: 15 },
-    { name: "Saç + Sakal", price: 800, duration: 45 },
-    { name: "Saç Açma Boyama", price: 1500, duration: 90 },
-  ]
-
-  const days = [
-    "Pazartesi",
-    "Salı",
-    "Çarşamba",
-    "Perşembe",
-    "Cuma",
-    "Cumartesi",
-    "Pazar",
-  ]
+  const [loaded, setLoaded] = useState(false)
 
   const [staff, setStaff] = useState<string[]>([])
   const [newStaff, setNewStaff] = useState("")
@@ -69,43 +72,29 @@ export default function SettingsPage() {
   const [holidays, setHolidays] = useState<HolidayItem[]>([])
 
   useEffect(() => {
-    const savedStaff = localStorage.getItem("staff")
-    const savedServices = localStorage.getItem("services")
-    const savedHours = localStorage.getItem("workHours")
-    const savedBreaks = localStorage.getItem("breaks")
-    const savedHolidays = localStorage.getItem("holidays")
+    async function load() {
+      try {
+        const res = await fetch("/api/config", { cache: "no-store" })
+        if (!res.ok) throw new Error("config")
+        const data = await res.json()
 
-    if (savedStaff) {
-      setStaff(JSON.parse(savedStaff))
+        setStaff(data.staff ?? [])
+        setServices(data.services?.length ? data.services : defaultServices)
+        setWorkHours(
+          data.workHours?.length
+            ? data.workHours
+            : days.map((day) => ({ day, start: "09:00", end: "18:00", closed: false }))
+        )
+        setBreaks(data.breaks ?? [])
+        setHolidays(data.holidays ?? [])
+        setLoaded(true)
+      } catch (error) {
+        console.error(error)
+        alert("Ayarlar yüklenemedi ❌")
+      }
     }
 
-    if (savedServices) {
-      setServices(JSON.parse(savedServices))
-    } else {
-      setServices(defaultServices)
-      localStorage.setItem("services", JSON.stringify(defaultServices))
-    }
-
-    if (savedHours) {
-      setWorkHours(JSON.parse(savedHours))
-    } else {
-      const defaultHours = days.map((day) => ({
-        day,
-        start: "09:00",
-        end: "18:00",
-        closed: false,
-      }))
-      setWorkHours(defaultHours)
-      localStorage.setItem("workHours", JSON.stringify(defaultHours))
-    }
-
-    if (savedBreaks) {
-      setBreaks(JSON.parse(savedBreaks))
-    }
-
-    if (savedHolidays) {
-      setHolidays(JSON.parse(savedHolidays))
-    }
+    load()
   }, [])
 
   function updateCalendar() {
@@ -114,32 +103,18 @@ export default function SettingsPage() {
 
   function saveStaff(list: string[]) {
     setStaff(list)
-    localStorage.setItem("staff", JSON.stringify(list))
   }
 
   function addStaff() {
     if (!newStaff.trim()) return
-
-    const updated = [...staff, newStaff.trim()]
-    saveStaff(updated)
+    saveStaff([...staff, newStaff.trim()])
     setNewStaff("")
-    updateCalendar()
   }
 
   function deleteStaff(index: number) {
-    const updated = staff.filter((_, i) => i !== index)
-    saveStaff(updated)
-
-    const filteredBreaks = breaks.filter((b) => b.staff !== `staff${index}`)
-    const filteredHolidays = holidays.filter((h) => h.staff !== `staff${index}`)
-
-    setBreaks(filteredBreaks)
-    setHolidays(filteredHolidays)
-
-    localStorage.setItem("breaks", JSON.stringify(filteredBreaks))
-    localStorage.setItem("holidays", JSON.stringify(filteredHolidays))
-
-    updateCalendar()
+    saveStaff(staff.filter((_, i) => i !== index))
+    setBreaks(breaks.filter((b) => b.staff !== `staff${index}`))
+    setHolidays(holidays.filter((h) => h.staff !== `staff${index}`))
   }
 
   function updateStaff(index: number, value: string) {
@@ -150,45 +125,39 @@ export default function SettingsPage() {
 
   function saveServices(list: Service[]) {
     setServices(list)
-    localStorage.setItem("services", JSON.stringify(list))
   }
 
   function addService() {
     if (!serviceName.trim() || !servicePrice) return
 
-    const newService: Service = {
-      name: serviceName.trim(),
-      price: Number(servicePrice),
-      duration: Number(serviceDuration),
-    }
-
-    const updated = [...services, newService]
-    saveServices(updated)
+    saveServices([
+      ...services,
+      {
+        name: serviceName.trim(),
+        price: Number(servicePrice),
+        duration: Number(serviceDuration),
+      },
+    ])
 
     setServiceName("")
     setServicePrice("")
     setServiceDuration("30")
-
-    updateCalendar()
   }
 
   function deleteService(index: number) {
-    const updated = services.filter((_, i) => i !== index)
-    saveServices(updated)
-    updateCalendar()
+    saveServices(services.filter((_, i) => i !== index))
   }
 
   function updateService(index: number, key: string, value: any) {
-    const updated: any = [...services]
+    const updated: any = services.map((s) => ({ ...s }))
     updated[index][key] = key === "name" ? value : Number(value)
     saveServices(updated)
   }
 
   function updateHours(index: number, key: string, value: any) {
-    const updated: any = [...workHours]
+    const updated: any = workHours.map((d) => ({ ...d }))
     updated[index][key] = value
     setWorkHours(updated)
-    localStorage.setItem("workHours", JSON.stringify(updated))
   }
 
   function addBreak() {
@@ -197,27 +166,13 @@ export default function SettingsPage() {
       return
     }
 
-    const newBreak: BreakItem = {
-      staff: selectedStaff,
-      start: breakStart,
-      end: breakEnd,
-    }
-
-    const updated = [...breaks, newBreak]
-    setBreaks(updated)
-    localStorage.setItem("breaks", JSON.stringify(updated))
-
+    setBreaks([...breaks, { staff: selectedStaff, start: breakStart, end: breakEnd }])
     setBreakStart("")
     setBreakEnd("")
-
-    updateCalendar()
   }
 
   function deleteBreak(index: number) {
-    const updated = breaks.filter((_, i) => i !== index)
-    setBreaks(updated)
-    localStorage.setItem("breaks", JSON.stringify(updated))
-    updateCalendar()
+    setBreaks(breaks.filter((_, i) => i !== index))
   }
 
   function addHoliday() {
@@ -226,38 +181,50 @@ export default function SettingsPage() {
       return
     }
 
-    const newHoliday: HolidayItem = {
-      staff: selectedStaff,
-      start: holidayStart,
-      end: holidayEnd,
-    }
-
-    const updated = [...holidays, newHoliday]
-    setHolidays(updated)
-    localStorage.setItem("holidays", JSON.stringify(updated))
-
+    setHolidays([...holidays, { staff: selectedStaff, start: holidayStart, end: holidayEnd }])
     setHolidayStart("")
     setHolidayEnd("")
-
-    updateCalendar()
   }
 
   function deleteHoliday(index: number) {
-    const updated = holidays.filter((_, i) => i !== index)
-    setHolidays(updated)
-    localStorage.setItem("holidays", JSON.stringify(updated))
-    updateCalendar()
+    setHolidays(holidays.filter((_, i) => i !== index))
   }
 
-  function saveAll() {
-    localStorage.setItem("staff", JSON.stringify(staff))
-    localStorage.setItem("services", JSON.stringify(services))
-    localStorage.setItem("workHours", JSON.stringify(workHours))
-    localStorage.setItem("breaks", JSON.stringify(breaks))
-    localStorage.setItem("holidays", JSON.stringify(holidays))
+  async function saveAll() {
+    if (!loaded) {
+      alert("Ayarlar yüklenmeden kaydedilemez")
+      return
+    }
 
-    updateCalendar()
-    alert("Kaydedildi ✅")
+    const user = auth.currentUser
+    if (!user) {
+      alert("Oturum bulunamadı, tekrar giriş yapın")
+      return
+    }
+
+    try {
+      const token = await user.getIdToken()
+      const res = await fetch("/api/config", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ staff, services, workHours, breaks, holidays }),
+      })
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        alert(data.error || "Kaydedilemedi ❌")
+        return
+      }
+
+      updateCalendar()
+      alert("Kaydedildi ✅")
+    } catch (error) {
+      console.error(error)
+      alert("Kaydedilemedi ❌")
+    }
   }
 
   function logout() {
