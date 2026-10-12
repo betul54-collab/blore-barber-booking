@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { adminDb } from "@/lib/firebaseAdmin"
+import { resolveSalon, bookingsCol } from "@/lib/salon";
 import { requireAdmin } from "@/lib/requireAdmin"
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/
@@ -20,13 +21,13 @@ function validSlot(date: any, time: any, duration: any, staff: any) {
   )
 }
 
-async function saveWithCheck(
+async function saveWithCheck(salon: string, 
   id: string | null,
   data: { date: string; time: string; duration: number; staff: string },
   extra: Record<string, any>
 ) {
   return adminDb.runTransaction(async (tx) => {
-    const snap = await tx.get(adminDb.collection("bookings").where("date", "==", data.date))
+    const snap = await tx.get(bookingsCol(salon).where("date", "==", data.date))
     const start = toMin(data.time)
     const end = start + data.duration
 
@@ -42,7 +43,7 @@ async function saveWithCheck(
     if (conflict) return { conflict: true as const, id: "" }
 
     if (id) {
-      tx.update(adminDb.collection("bookings").doc(id), {
+      tx.update(bookingsCol(salon).doc(id), {
         date: data.date,
         time: data.time,
         duration: data.duration,
@@ -52,7 +53,7 @@ async function saveWithCheck(
       return { conflict: false as const, id }
     }
 
-    const ref = adminDb.collection("bookings").doc()
+    const ref = bookingsCol(salon).doc()
     tx.set(ref, {
       ...extra,
       date: data.date,
@@ -67,11 +68,13 @@ async function saveWithCheck(
 }
 
 export async function GET(req: Request) {
+  const salon = await resolveSalon(req);
+  if (!salon) return NextResponse.json({ error: "Salon bulunamadi" }, { status: 404 });
   if (!(await requireAdmin(req))) {
     return NextResponse.json({ error: "Yetkisiz" }, { status: 401 })
   }
 
-  const snap = await adminDb.collection("bookings").get()
+  const snap = await bookingsCol(salon).get()
   const list = snap.docs.map((d) => {
     const b = d.data() as any
     return {
@@ -91,6 +94,8 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
+  const salon = await resolveSalon(req);
+  if (!salon) return NextResponse.json({ error: "Salon bulunamadi" }, { status: 404 });
   if (!(await requireAdmin(req))) {
     return NextResponse.json({ error: "Yetkisiz" }, { status: 401 })
   }
@@ -113,7 +118,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Tarih/saat geçersiz" }, { status: 400 })
   }
 
-  const result = await saveWithCheck(
+  const result = await saveWithCheck(salon, 
     null,
     { date, time, duration, staff },
     {
@@ -132,6 +137,8 @@ export async function POST(req: Request) {
 }
 
 export async function PATCH(req: Request) {
+  const salon = await resolveSalon(req);
+  if (!salon) return NextResponse.json({ error: "Salon bulunamadi" }, { status: 404 });
   if (!(await requireAdmin(req))) {
     return NextResponse.json({ error: "Yetkisiz" }, { status: 401 })
   }
@@ -148,12 +155,12 @@ export async function PATCH(req: Request) {
     return NextResponse.json({ error: "Tarih/saat geçersiz" }, { status: 400 })
   }
 
-  const exists = await adminDb.collection("bookings").doc(id).get()
+  const exists = await bookingsCol(salon).doc(id).get()
   if (!exists.exists) {
     return NextResponse.json({ error: "Randevu bulunamadı" }, { status: 404 })
   }
 
-  const result = await saveWithCheck(id, { date, time, duration, staff }, {})
+  const result = await saveWithCheck(salon, id, { date, time, duration, staff }, {})
 
   if (result.conflict) {
     return NextResponse.json({ error: "Bu saat dolu" }, { status: 409 })
@@ -163,6 +170,8 @@ export async function PATCH(req: Request) {
 }
 
 export async function DELETE(req: Request) {
+  const salon = await resolveSalon(req);
+  if (!salon) return NextResponse.json({ error: "Salon bulunamadi" }, { status: 404 });
   if (!(await requireAdmin(req))) {
     return NextResponse.json({ error: "Yetkisiz" }, { status: 401 })
   }
@@ -174,6 +183,6 @@ export async function DELETE(req: Request) {
     return NextResponse.json({ error: "id yok" }, { status: 400 })
   }
 
-  await adminDb.collection("bookings").doc(id).delete()
+  await bookingsCol(salon).doc(id).delete()
   return NextResponse.json({ success: true })
 }

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { adminDb } from "@/lib/firebaseAdmin"
+import { resolveSalon, bookingsCol, settingsDoc } from "@/lib/salon";
 
 export const runtime = "nodejs"
 
@@ -7,6 +8,8 @@ const PHONE_RE = /^\+905\d{9}$/
 const ID_RE = /^[A-Za-z0-9_-]{1,64}$/
 
 export async function POST(req: Request) {
+  const salon = await resolveSalon(req);
+  if (!salon) return Response.json({ error: "Salon bulunamadi" }, { status: 404 });
   let body: any
   try {
     body = await req.json()
@@ -20,7 +23,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Geçersiz istek" }, { status: 400 })
   }
 
-  const ref = adminDb.collection("bookings").doc(id)
+  const ref = bookingsCol(salon).doc(id)
   const snap = await ref.get()
   const data = snap.data()
 

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { adminDb } from "@/lib/firebaseAdmin"
+import { resolveSalon, bookingsCol, settingsDoc } from "@/lib/salon";
 import { hasConflict } from "@/lib/checkBookingConflicts"
 
 export const runtime = "nodejs"
@@ -17,6 +18,8 @@ function bad(error: string) {
 }
 
 export async function POST(req: Request) {
+  const salon = await resolveSalon(req);
+  if (!salon) return Response.json({ error: "Salon bulunamadi" }, { status: 404 });
   let body: any
   try {
     body = await req.json()
@@ -44,11 +47,11 @@ export async function POST(req: Request) {
   if (!Number.isFinite(price) || price < 0) return bad("Geçersiz fiyat")
 
   const staffKey = staffId || staff
-  const ref = adminDb.collection("bookings").doc()
+  const ref = bookingsCol(salon).doc()
 
   try {
     await adminDb.runTransaction(async (tx) => {
-      const snap = await tx.get(adminDb.collection("bookings").where("date", "==", date))
+      const snap = await tx.get(bookingsCol(salon).where("date", "==", date))
       const sameStaff = snap.docs
         .map((d) => d.data())
         .filter((b) => (b.staffId || b.staff || "") === staffKey)

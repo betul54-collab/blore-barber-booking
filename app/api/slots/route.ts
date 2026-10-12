@@ -1,16 +1,19 @@
 import { NextResponse } from "next/server"
 import { adminDb } from "@/lib/firebaseAdmin"
+import { resolveSalon, bookingsCol, settingsDoc } from "@/lib/salon";
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
 
 export async function GET(req: Request) {
+  const salon = await resolveSalon(req);
+  if (!salon) return Response.json({ error: "Salon bulunamadi" }, { status: 404 });
   const date = new URL(req.url).searchParams.get("date") ?? ""
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
     return NextResponse.json({ error: "Geçersiz tarih" }, { status: 400 })
   }
 
-  const snap = await adminDb.collection("bookings").where("date", "==", date).get()
+  const snap = await bookingsCol(salon).where("date", "==", date).get()
   const taken = snap.docs.map((d) => {
     const b = d.data()
     return { time: b.time, duration: Number(b.duration || 0), staff: b.staffId || b.staff || "" }

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { adminDb } from "@/lib/firebaseAdmin"
+import { resolveSalon, bookingsCol, settingsDoc } from "@/lib/salon";
 import { requireAdmin } from "@/lib/requireAdmin"
 
 export const runtime = "nodejs"
@@ -62,12 +63,16 @@ function clean(b: any) {
   }
 }
 
-export async function GET() {
-  const snap = await adminDb.doc("settings/shop").get()
+export async function GET(req: Request) {
+  const salon = await resolveSalon(req);
+  if (!salon) return Response.json({ error: "Salon bulunamadi" }, { status: 404 });
+  const snap = await settingsDoc(salon).get()
   return NextResponse.json(snap.exists ? { ...defaults, ...snap.data() } : defaults)
 }
 
 export async function PUT(req: Request) {
+  const salon = await resolveSalon(req);
+  if (!salon) return Response.json({ error: "Salon bulunamadi" }, { status: 404 });
   if (!(await requireAdmin(req))) {
     return NextResponse.json({ error: "Yetkisiz" }, { status: 401 })
   }
@@ -82,6 +87,6 @@ export async function PUT(req: Request) {
   const data = clean(body)
   if (!data) return NextResponse.json({ error: "Geçersiz veri" }, { status: 400 })
 
-  await adminDb.doc("settings/shop").set(data)
+  await settingsDoc(salon).set(data)
   return NextResponse.json({ ok: true })
 }

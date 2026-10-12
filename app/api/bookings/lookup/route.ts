@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { adminDb } from "@/lib/firebaseAdmin"
+import { resolveSalon, bookingsCol, settingsDoc } from "@/lib/salon";
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
@@ -11,6 +12,8 @@ function todayIstanbul() {
 }
 
 export async function POST(req: Request) {
+  const salon = await resolveSalon(req);
+  if (!salon) return Response.json({ error: "Salon bulunamadi" }, { status: 404 });
   let body: any
   try {
     body = await req.json()
@@ -23,7 +26,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Geçersiz telefon" }, { status: 400 })
   }
 
-  const snap = await adminDb.collection("bookings").where("phone", "==", phone).get()
+  const snap = await bookingsCol(salon).where("phone", "==", phone).get()
   const today = todayIstanbul()
 
   const list = snap.docs
