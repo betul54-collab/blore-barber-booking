@@ -88,6 +88,15 @@ export default function CalendarPage() {
   const [pickedStaff, setPickedStaff] = useState("")
   const [view, setView] = useState("resourceTimeGridDay")
   const [currentDate, setCurrentDate] = useState(new Date())
+  const [isMobile, setIsMobile] = useState(false)
+
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 768px)")
+    const update = () => setIsMobile(mq.matches)
+    update()
+    mq.addEventListener("change", update)
+    return () => mq.removeEventListener("change", update)
+  }, [])
 
   const loadConfig = useCallback(async () => {
     try {
@@ -381,14 +390,16 @@ export default function CalendarPage() {
 
   return (
     <div
+      className="cal-page"
       style={{
-        minHeight: "100vh",
         background: "linear-gradient(135deg,#0f172a,#1e293b)",
         color: "white",
       }}
     >
-      <div style={{ marginBottom: 18 }}>
-        <h1 style={{ margin: 0, fontSize: 34, fontWeight: 800 }}>📅 Takvim</h1>
+      <div className="cal-head">
+        <h1 className="cal-h1" style={{ margin: 0, fontSize: 34, fontWeight: 800 }}>
+          📅 Takvim
+        </h1>
         <p style={{ margin: "8px 0 0", color: "rgba(255,255,255,0.72)" }}>
           {formatDateWithDay(currentDate)}
         </p>
@@ -412,42 +423,24 @@ export default function CalendarPage() {
         )}
       </div>
 
-      <div
-        style={{
-          background: "rgba(255,255,255,0.06)",
-          border: "1px solid rgba(255,255,255,0.10)",
-          borderRadius: 24,
-          padding: 18,
-          backdropFilter: "blur(18px)",
-          boxShadow: "0 20px 60px rgba(0,0,0,0.35)",
-        }}
-      >
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            marginBottom: 16,
-            gap: 12,
-            flexWrap: "wrap",
-          }}
-        >
+      <div className="cal-card">
+        <div className="cal-toolbar">
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <button onClick={goPrev} style={roundBtn}>
+            <button onClick={goPrev} className="cal-round">
               ‹
             </button>
 
-            <button onClick={goNext} style={roundBtn}>
+            <button onClick={goNext} className="cal-round">
               ›
             </button>
 
-            <button onClick={goToday} style={chipBtn}>
+            <button onClick={goToday} className="cal-chip">
               Bugün
             </button>
           </div>
 
           <div style={{ position: "relative" }}>
-            <button onClick={() => setOpenView(!openView)} style={chipBtn}>
+            <button onClick={() => setOpenView(!openView)} className="cal-chip">
               {view === "resourceTimeGridDay" && "Gün"}
               {view === "timeGridWeek" && "Hafta"}
               {view === "dayGridMonth" && "Ay"} ▼
@@ -494,10 +487,12 @@ export default function CalendarPage() {
           selectable={true}
           editable={true}
           eventDurationEditable={true}
+          longPressDelay={300}
+          selectLongPressDelay={300}
           slotMinTime="08:00:00"
           slotMaxTime="22:00:00"
           slotDuration="00:30:00"
-          height="80vh"
+          height={isMobile ? "auto" : "80vh"}
           nowIndicator={true}
           datesSet={(info) => setCurrentDate(info.start)}
           dayMaxEvents={false}
@@ -600,6 +595,54 @@ export default function CalendarPage() {
         />
 
         <style jsx global>{`
+          .cal-page {
+            min-height: 100vh;
+          }
+
+          .cal-head {
+            margin-bottom: 18px;
+          }
+
+          .cal-card {
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 24px;
+            padding: 18px;
+            backdrop-filter: blur(18px);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
+          }
+
+          .cal-toolbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+            gap: 12px;
+            flex-wrap: wrap;
+          }
+
+          .cal-round {
+            width: 44px;
+            height: 44px;
+            border-radius: 999px;
+            border: none;
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            cursor: pointer;
+            font-size: 28px;
+            line-height: 1;
+          }
+
+          .cal-chip {
+            padding: 10px 16px;
+            border-radius: 999px;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            background: rgba(255, 255, 255, 0.08);
+            color: white;
+            cursor: pointer;
+            font-weight: 700;
+          }
+
           .fc {
             color: white;
           }
@@ -615,8 +658,9 @@ export default function CalendarPage() {
             border-color: rgba(255, 255, 255, 0.08) !important;
           }
 
-          .fc-col-header-cell {
-            background: rgba(255, 255, 255, 0.05);
+                    .fc-col-header-cell,
+          .fc .fc-scrollgrid-section-sticky > * {
+            background: #1e293b !important;
           }
 
           .fc-timegrid-slot {
@@ -674,6 +718,67 @@ export default function CalendarPage() {
           .fc-daygrid-day-frame {
             color: white !important;
           }
+
+          @media (max-width: 768px) {
+            .cal-page {
+              min-height: 0;
+              background: transparent !important;
+            }
+
+            .cal-head {
+              margin-bottom: 8px;
+            }
+
+            .cal-h1 {
+              font-size: 22px !important;
+            }
+
+            .cal-card {
+              padding: 6px;
+              border-radius: 16px;
+              border: none;
+              box-shadow: none;
+              backdrop-filter: none;
+            }
+
+            .cal-toolbar {
+              flex-wrap: nowrap;
+              margin-bottom: 8px;
+              gap: 8px;
+            }
+
+            .cal-round {
+              width: 38px;
+              height: 38px;
+              font-size: 24px;
+            }
+
+            .cal-chip {
+              padding: 8px 12px;
+              font-size: 14px;
+            }
+
+            .fc-timegrid-slot {
+              height: 48px !important;
+            }
+
+            .fc-timegrid-axis-cushion,
+            .fc-timegrid-slot-label-cushion {
+              padding: 0 4px !important;
+              font-size: 12px;
+            }
+
+            .fc-col-header-cell-cushion {
+              font-size: 13px;
+              padding: 6px 2px !important;
+            }
+
+            .fc-event {
+              border-radius: 8px !important;
+              padding: 2px 4px !important;
+              font-size: 12px;
+            }
+          }
         `}</style>
       </div>
 
@@ -725,6 +830,7 @@ export default function CalendarPage() {
               onChange={(e) => setNote(e.target.value)}
               style={{
                 width: "100%",
+                boxSizing: "border-box",
                 padding: 12,
                 marginBottom: 12,
                 borderRadius: 12,
@@ -732,6 +838,7 @@ export default function CalendarPage() {
                 minHeight: 90,
                 resize: "none",
                 fontFamily: "inherit",
+                fontSize: 16,
               }}
             />
 
@@ -819,11 +926,17 @@ const overlay: React.CSSProperties = {
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
+  padding: 16,
+  boxSizing: "border-box",
   zIndex: 9999,
 }
 
 const modal: React.CSSProperties = {
-  width: 420,
+  width: "100%",
+  maxWidth: 420,
+  maxHeight: "90vh",
+  overflowY: "auto",
+  boxSizing: "border-box",
   background: "white",
   color: "#111827",
   borderRadius: 18,
@@ -833,10 +946,14 @@ const modal: React.CSSProperties = {
 
 const inputStyle: React.CSSProperties = {
   width: "100%",
+  boxSizing: "border-box",
   padding: 12,
   marginBottom: 12,
   borderRadius: 12,
   border: "1px solid #d1d5db",
+  fontSize: 16,
+  background: "white",
+  color: "#111827",
 }
 
 const infoBox: React.CSSProperties = {
@@ -874,28 +991,6 @@ const dangerBtn: React.CSSProperties = {
   borderRadius: 999,
   border: "none",
   background: "#ef4444",
-  color: "white",
-  cursor: "pointer",
-  fontWeight: 700,
-}
-
-const roundBtn: React.CSSProperties = {
-  width: 44,
-  height: 44,
-  borderRadius: 999,
-  border: "none",
-  background: "rgba(255,255,255,0.1)",
-  color: "white",
-  cursor: "pointer",
-  fontSize: 28,
-  lineHeight: 1,
-}
-
-const chipBtn: React.CSSProperties = {
-  padding: "10px 16px",
-  borderRadius: 999,
-  border: "1px solid rgba(255,255,255,0.12)",
-  background: "rgba(255,255,255,0.08)",
   color: "white",
   cursor: "pointer",
   fontWeight: 700,

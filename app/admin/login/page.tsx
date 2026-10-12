@@ -9,6 +9,7 @@ export default function LoginPage() {
   const router = useRouter()
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
+  const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
 
@@ -45,6 +46,7 @@ export default function LoginPage() {
         style={{
           width: "100%",
           maxWidth: 380,
+          boxSizing: "border-box",
           background: "white",
           color: "#111827",
           padding: 32,
@@ -59,18 +61,44 @@ export default function LoginPage() {
         <input
           type="email"
           placeholder="E-posta"
+          autoComplete="username"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           style={inputStyle}
         />
 
-        <input
-          type="password"
-          placeholder="Şifre"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          style={inputStyle}
-        />
+        <div style={{ position: "relative", marginBottom: 14 }}>
+          <input
+            type={showPassword ? "text" : "password"}
+            placeholder="Şifre"
+            autoComplete="current-password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            style={{ ...inputStyle, marginBottom: 0, paddingRight: 84 }}
+          />
+
+          <button
+            type="button"
+            onClick={() => setShowPassword((v) => !v)}
+            aria-label={showPassword ? "Şifreyi gizle" : "Şifreyi göster"}
+            style={{
+              position: "absolute",
+              right: 8,
+              top: "50%",
+              transform: "translateY(-50%)",
+              border: "none",
+              background: "#e5e7eb",
+              color: "#111827",
+              borderRadius: 8,
+              padding: "8px 10px",
+              fontSize: 13,
+              fontWeight: 700,
+              cursor: "pointer",
+            }}
+          >
+            {showPassword ? "Gizle" : "Göster"}
+          </button>
+        </div>
 
         <button
           type="submit"
@@ -90,6 +118,25 @@ export default function LoginPage() {
           {loading ? "Giriş yapılıyor..." : "Giriş"}
         </button>
 
+        <button
+          type="button"
+          onClick={() => router.push("/")}
+          style={{
+            width: "100%",
+            padding: 14,
+            marginTop: 10,
+            borderRadius: 12,
+            border: "none",
+            background: "#64748b",
+            color: "white",
+            fontWeight: 700,
+            fontSize: 15,
+            cursor: "pointer",
+          }}
+        >
+          Ana Sayfaya Dön
+        </button>
+
         {error && (
           <p style={{ color: "#dc2626", marginTop: 14, marginBottom: 0, fontSize: 14 }}>
             {error}
@@ -102,10 +149,13 @@ export default function LoginPage() {
 
 const inputStyle: React.CSSProperties = {
   width: "100%",
+  boxSizing: "border-box",
   padding: 14,
   marginBottom: 14,
   borderRadius: 12,
   border: "1px solid #d1d5db",
-  fontSize: 15,
+  fontSize: 16,
   outline: "none",
+  background: "white",
+  color: "#111827",
 }

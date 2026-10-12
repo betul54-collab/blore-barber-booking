@@ -1,4 +1,5 @@
 "use client"
+import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useState } from "react"
 
@@ -35,11 +36,30 @@ export default function HomePage() {
         overflow: "hidden",
       }}
     >
+      <Link
+        href="/admin/login"
+        style={{
+          position: "absolute",
+          top: 16,
+          right: 20,
+          color: "rgba(255,255,255,0.55)",
+          fontSize: 14,
+          fontWeight: 600,
+          textDecoration: "none",
+          padding: "8px 12px",
+          borderRadius: 999,
+          border: "1px solid rgba(255,255,255,0.15)",
+        }}
+      >
+        İşletme Girişi
+      </Link>
+
       <div
         style={{
           textAlign: "center",
           color: "white",
           transition: "all 0.3s ease",
+          padding: 20,
         }}
       >
         <h1

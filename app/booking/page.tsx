@@ -52,6 +52,7 @@ export default function BookingPage() {
   const [service, setService] = useState("")
   const [date, setDate] = useState("")
   const [time, setTime] = useState("")
+  const [accepted, setAccepted] = useState(false)
 
   const [availableTimes, setAvailableTimes] = useState<string[]>([])
   const [loading, setLoading] = useState(false)
@@ -259,6 +260,11 @@ export default function BookingPage() {
       return
     }
 
+    if (!accepted) {
+      alert("Devam etmek için Datenschutzerklärung'u kabul edin")
+      return
+    }
+
     setLoading(true)
 
     const staffIndex = Number(selectedStaff.replace("staff", ""))
@@ -299,6 +305,7 @@ export default function BookingPage() {
         style={{
           width: "100%",
           maxWidth: 520,
+          boxSizing: "border-box",
           background: "white",
           borderRadius: 24,
           padding: 30,
@@ -387,6 +394,10 @@ export default function BookingPage() {
           ))}
         </select>
 
+        <div style={{ color: "#64748b", fontSize: 14, marginBottom: 6 }}>
+          Tarih seç
+        </div>
+
         <input
           type="date"
           min={new Date().toISOString().split("T")[0]}
@@ -469,6 +480,37 @@ export default function BookingPage() {
             </>
           )}
 
+        <label
+          style={{
+            display: "flex",
+            alignItems: "flex-start",
+            gap: 10,
+            marginBottom: 16,
+            color: "#374151",
+            fontSize: 14,
+            lineHeight: 1.5,
+            cursor: "pointer",
+          }}
+        >
+          <input
+            type="checkbox"
+            checked={accepted}
+            onChange={(e) => setAccepted(e.target.checked)}
+            style={{ marginTop: 3, width: 18, height: 18, flexShrink: 0 }}
+          />
+          <span>
+            <a
+              href="/datenschutz"
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ color: "#2563eb", fontWeight: 700 }}
+            >
+              Datenschutzerklärung
+            </a>
+            &apos;u okudum ve kabul ediyorum.
+          </span>
+        </label>
+
         <button
           onClick={handleContinue}
           disabled={loading}
@@ -509,12 +551,17 @@ export default function BookingPage() {
 
 const inputStyle: React.CSSProperties = {
   width: "100%",
+  boxSizing: "border-box",
+  display: "block",
+  minHeight: 50,
   padding: 14,
   borderRadius: 14,
   border: "1px solid #d1d5db",
   marginBottom: 14,
-  fontSize: 15,
+  fontSize: 16,
   outline: "none",
+  background: "white",
+  color: "#111827",
 }
 
 const errorBox: React.CSSProperties = {
