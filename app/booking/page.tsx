@@ -1,5 +1,6 @@
 "use client"
 
+import { withSalon, salonPath } from "@/lib/salonClient";
 import { useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
 
@@ -60,7 +61,7 @@ export default function BookingPage() {
   useEffect(() => {
     async function loadConfig() {
       try {
-        const res = await fetch("/api/config", { cache: "no-store" })
+        const res = await fetch(withSalon("/api/config"), { cache: "no-store" })
         if (!res.ok) throw new Error("config")
         const data = await res.json()
 
@@ -89,7 +90,7 @@ export default function BookingPage() {
 
     async function loadTaken() {
       try {
-        const res = await fetch(`/api/slots?date=${date}`, { cache: "no-store" })
+        const res = await fetch(withSalon(`/api/slots?date=${date}`), { cache: "no-store" })
         if (!res.ok) return
 
         const list: { time: string; duration: number; staff: string }[] = await res.json()
@@ -286,7 +287,7 @@ export default function BookingPage() {
     localStorage.setItem("bookingData", JSON.stringify(bookingData))
 
     setTimeout(() => {
-      router.push("/booking/confirm")
+      router.push(salonPath("/booking/confirm"))
     }, 250)
   }
 
@@ -529,7 +530,7 @@ export default function BookingPage() {
         </button>
 
         <button
-          onClick={() => router.push("/")}
+          onClick={() => router.push(salonPath("/"))}
           style={{
             width: "100%",
             padding: 14,

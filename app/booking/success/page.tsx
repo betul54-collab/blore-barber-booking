@@ -1,5 +1,6 @@
 "use client"
 
+import { withSalon, salonPath } from "@/lib/salonClient";
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 
@@ -50,7 +51,7 @@ export default function SuccessPage() {
         <div>Randevu bilgisi bulunamadı</div>
 
         <button
-          onClick={() => router.push("/")}
+          onClick={() => router.push(salonPath("/"))}
           style={{
             padding: "12px 24px",
             borderRadius: 14,
@@ -167,7 +168,7 @@ export default function SuccessPage() {
         </div>
 
         <button
-          onClick={() => router.push("/")}
+          onClick={() => router.push(salonPath("/"))}
           style={{
             width: "100%",
             padding: 14,

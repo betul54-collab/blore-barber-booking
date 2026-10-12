@@ -1,5 +1,6 @@
 "use client"
 
+import { withSalon, salonPath } from "@/lib/salonClient";
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 
@@ -35,7 +36,7 @@ export default function ConfirmPage() {
     try {
       setLoading(true)
 
-      const res = await fetch("/api/bookings", {
+      const res = await fetch(withSalon("/api/bookings"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -63,7 +64,7 @@ export default function ConfirmPage() {
         return
       }
 
-      router.push("/booking/success")
+      router.push(salonPath("/booking/success"))
     } catch (error) {
       console.error(error)
       alert("Randevu kaydedilemedi ❌")

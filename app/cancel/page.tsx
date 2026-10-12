@@ -1,5 +1,6 @@
 "use client"
 
+import { withSalon, salonPath } from "@/lib/salonClient";
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 
@@ -51,7 +52,7 @@ export default function CancelPage() {
       setLoading(true)
       setSearched(true)
 
-      const res = await fetch("/api/bookings/lookup", {
+      const res = await fetch(withSalon("/api/bookings/lookup"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ phone: normalizePhone(phone) }),
@@ -84,7 +85,7 @@ export default function CancelPage() {
 
       const bookingToCancel = results.find((b) => b.id === id) || null
 
-      const res = await fetch("/api/bookings/cancel", {
+      const res = await fetch(withSalon("/api/bookings/cancel"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id, phone: normalizePhone(phone) }),
@@ -263,7 +264,7 @@ export default function CancelPage() {
         ))}
 
         <button
-          onClick={() => router.push("/")}
+          onClick={() => router.push(salonPath("/"))}
           style={{
             marginTop: "10px",
             width: "100%",
@@ -314,7 +315,7 @@ export default function CancelPage() {
 
             <div style={{ display: "grid", gap: 10 }}>
               <button
-                onClick={() => router.push("/")}
+                onClick={() => router.push(salonPath("/"))}
                 style={{
                   width: "100%",
                   padding: 12,

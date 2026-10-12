@@ -1,4 +1,5 @@
 "use client"
+import { withSalon, salonPath } from "@/lib/salonClient";
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useState } from "react"
@@ -12,7 +13,7 @@ export default function HomePage() {
     setLoadingBooking(true)
 
     setTimeout(() => {
-      router.push("/booking")
+      router.push(salonPath("/booking"))
     }, 250)
   }
 
@@ -20,7 +21,7 @@ export default function HomePage() {
     setLoadingCancel(true)
 
     setTimeout(() => {
-      router.push("/cancel")
+      router.push(salonPath("/cancel"))
     }, 250)
   }
 
