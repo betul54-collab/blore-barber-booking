@@ -1,5 +1,6 @@
 "use client"
 
+import { salonPath } from "@/lib/salonClient";
 import { useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { onAuthStateChanged } from "firebase/auth"
@@ -11,9 +12,9 @@ export default function AdminPage() {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (user) {
-        router.replace("/admin/calendar")
+        router.replace(salonPath("/admin/calendar"))
       } else {
-        router.replace("/admin/login")
+        router.replace(salonPath("/admin/login"))
       }
     })
 

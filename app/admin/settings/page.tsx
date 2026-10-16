@@ -1,5 +1,7 @@
 "use client"
 
+import { salonPath } from "@/lib/salonClient";
+import { withSalon } from "@/lib/salonClient";
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { auth } from "@/lib/firebase"
@@ -74,7 +76,7 @@ export default function SettingsPage() {
   useEffect(() => {
     async function load() {
       try {
-        const res = await fetch("/api/config", { cache: "no-store" })
+        const res = await fetch(withSalon("/api/config"), { cache: "no-store" })
         if (!res.ok) throw new Error("config")
         const data = await res.json()
 
@@ -204,7 +206,7 @@ export default function SettingsPage() {
 
     try {
       const token = await user.getIdToken()
-      const res = await fetch("/api/config", {
+      const res = await fetch(withSalon("/api/config"), {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -228,7 +230,7 @@ export default function SettingsPage() {
   }
 
   function logout() {
-    router.push("/")
+    router.push(salonPath("/"))
   }
 
   function staffLabel(staffId: string) {

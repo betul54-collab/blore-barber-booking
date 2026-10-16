@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 import { adminDb } from "@/lib/firebaseAdmin"
 import { resolveSalon, bookingsCol, settingsDoc } from "@/lib/salon";
-import { requireAdmin } from "@/lib/requireAdmin"
+import { requireSalonAdmin } from "@/lib/requireSalonAdmin"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
@@ -73,7 +73,7 @@ export async function GET(req: Request) {
 export async function PUT(req: Request) {
   const salon = await resolveSalon(req);
   if (!salon) return Response.json({ error: "Salon bulunamadi" }, { status: 404 });
-  if (!(await requireAdmin(req))) {
+  if (!(await requireSalonAdmin(req, salon))) {
     return NextResponse.json({ error: "Yetkisiz" }, { status: 401 })
   }
 

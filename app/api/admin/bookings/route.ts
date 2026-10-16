@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 import { adminDb } from "@/lib/firebaseAdmin"
 import { resolveSalon, bookingsCol } from "@/lib/salon";
-import { requireAdmin } from "@/lib/requireAdmin"
+import { requireSalonAdmin } from "@/lib/requireSalonAdmin"
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/
 const TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/
@@ -70,7 +70,7 @@ async function saveWithCheck(salon: string,
 export async function GET(req: Request) {
   const salon = await resolveSalon(req);
   if (!salon) return NextResponse.json({ error: "Salon bulunamadi" }, { status: 404 });
-  if (!(await requireAdmin(req))) {
+  if (!(await requireSalonAdmin(req, salon))) {
     return NextResponse.json({ error: "Yetkisiz" }, { status: 401 })
   }
 
@@ -96,7 +96,7 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   const salon = await resolveSalon(req);
   if (!salon) return NextResponse.json({ error: "Salon bulunamadi" }, { status: 404 });
-  if (!(await requireAdmin(req))) {
+  if (!(await requireSalonAdmin(req, salon))) {
     return NextResponse.json({ error: "Yetkisiz" }, { status: 401 })
   }
 
@@ -139,7 +139,7 @@ export async function POST(req: Request) {
 export async function PATCH(req: Request) {
   const salon = await resolveSalon(req);
   if (!salon) return NextResponse.json({ error: "Salon bulunamadi" }, { status: 404 });
-  if (!(await requireAdmin(req))) {
+  if (!(await requireSalonAdmin(req, salon))) {
     return NextResponse.json({ error: "Yetkisiz" }, { status: 401 })
   }
 
@@ -172,7 +172,7 @@ export async function PATCH(req: Request) {
 export async function DELETE(req: Request) {
   const salon = await resolveSalon(req);
   if (!salon) return NextResponse.json({ error: "Salon bulunamadi" }, { status: 404 });
-  if (!(await requireAdmin(req))) {
+  if (!(await requireSalonAdmin(req, salon))) {
     return NextResponse.json({ error: "Yetkisiz" }, { status: 401 })
   }
 

@@ -1,5 +1,6 @@
 "use client"
 
+import { salonPath } from "@/lib/salonClient";
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { signInWithEmailAndPassword } from "firebase/auth"
@@ -18,7 +19,7 @@ export default function LoginPage() {
     setLoading(true)
     try {
       await signInWithEmailAndPassword(auth, email.trim(), password)
-      router.replace("/admin/calendar")
+      router.replace(salonPath("/admin/calendar"))
     } catch (err: any) {
       console.error("Login error:", err?.code, err?.message)
       setError(`Giriş başarısız (${err?.code || "bilinmeyen hata"})`)
@@ -120,7 +121,7 @@ export default function LoginPage() {
 
         <button
           type="button"
-          onClick={() => router.push("/")}
+          onClick={() => router.push(salonPath("/"))}
           style={{
             width: "100%",
             padding: 14,

@@ -1,5 +1,7 @@
 "use client"
 
+import { getSalon } from "@/lib/salonClient";
+import { salonPath } from "@/lib/salonClient";
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
@@ -16,12 +18,13 @@ export default function AdminLayout({
   const [ready, setReady] = useState(false)
   const [userEmail, setUserEmail] = useState("")
 
+  const [base, setBase] = useState("");
+  useEffect(() => { setBase(getSalon() ? "/s/" + getSalon() : ""); }, []);
   useEffect(() => {
-    const isLoginPage = pathname === "/admin/login"
-    const adminUid = process.env.NEXT_PUBLIC_ADMIN_UID
+    const isLoginPage = (pathname || "").endsWith("/admin/login")
 
     const unsubscribe = onAuthStateChanged(auth, (user) => {
-      const allowed = !!user && (!adminUid || user.uid === adminUid)
+      const allowed = !!user
 
       if (allowed) {
         setUserEmail(user!.email || "")
@@ -34,7 +37,7 @@ export default function AdminLayout({
         setReady(true)
       } else {
         setReady(false)
-        router.replace("/admin/login")
+        router.replace(salonPath("/admin/login"))
       }
     })
 
@@ -43,7 +46,7 @@ export default function AdminLayout({
 
   async function logout() {
     await signOut(auth)
-    router.replace("/admin/login")
+    router.replace(salonPath("/admin/login"))
   }
 
   if (!ready) {
@@ -63,7 +66,7 @@ export default function AdminLayout({
     )
   }
 
-  if (pathname === "/admin/login") {
+  if ((pathname || "").endsWith("/admin/login")) {
     return <>{children}</>
   }
 
@@ -76,11 +79,11 @@ export default function AdminLayout({
           <h2 className="adm-brand">Blore</h2>
 
           <nav className="adm-nav">
-            <Link href="/admin/calendar" className="adm-link">
+            <Link href={base + "/admin/calendar"} className="adm-link">
               📅 Takvim
             </Link>
 
-            <Link href="/admin/settings" className="adm-link">
+            <Link href={base + "/admin/settings"} className="adm-link">
               ⚙️ Ayarlar
             </Link>
           </nav>

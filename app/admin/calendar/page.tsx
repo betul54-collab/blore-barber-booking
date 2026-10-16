@@ -1,5 +1,6 @@
 "use client"
 
+import { withSalon } from "@/lib/salonClient";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import FullCalendar from "@fullcalendar/react"
 import timeGridPlugin from "@fullcalendar/timegrid"
@@ -100,7 +101,7 @@ export default function CalendarPage() {
 
   const loadConfig = useCallback(async () => {
     try {
-      const res = await fetch("/api/config", { cache: "no-store" })
+      const res = await fetch(withSalon("/api/config"), { cache: "no-store" })
       if (!res.ok) return
       const data = await res.json()
       setStaffList(data.staff ?? [])
@@ -114,7 +115,7 @@ export default function CalendarPage() {
 
   const loadBookings = useCallback(async () => {
     try {
-      const res = await authFetch("/api/admin/bookings")
+      const res = await authFetch(withSalon("/api/admin/bookings"))
       if (!res.ok) return
       setBookings(await res.json())
     } catch (error) {
@@ -292,7 +293,7 @@ export default function CalendarPage() {
     }
 
     try {
-      const res = await authFetch("/api/admin/bookings", {
+      const res = await authFetch(withSalon("/api/admin/bookings"), {
         method: "POST",
         body: JSON.stringify({
           name: name.trim(),
@@ -333,7 +334,7 @@ export default function CalendarPage() {
     newEnd: Date,
     resourceId: string
   ) {
-    const res = await authFetch("/api/admin/bookings", {
+    const res = await authFetch(withSalon("/api/admin/bookings"), {
       method: "PATCH",
       body: JSON.stringify({
         id: String(bookingId),
@@ -350,7 +351,7 @@ export default function CalendarPage() {
 
   async function deleteBooking(bookingId: number | string) {
     try {
-      const res = await authFetch("/api/admin/bookings", {
+      const res = await authFetch(withSalon("/api/admin/bookings"), {
         method: "DELETE",
         body: JSON.stringify({ id: String(bookingId) }),
       })
